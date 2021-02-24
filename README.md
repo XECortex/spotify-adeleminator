@@ -11,3 +11,10 @@ Whenever a new song is played, it checks the title of the song. If it reads “A
 3. Open Spotify
 4. Run `main.py`
 5. Enjoy music without ads! :)
+
+## Dependencies
+- Python
+- PulseAudio
+- Spotify (who didn't expect that?)
+
+This script currently only works on Linux, but I will add Windows compatibility soon
