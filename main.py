@@ -6,17 +6,9 @@ import psutil
 import atexit
 import dbus
 import gi.repository.GLib
+from subprocess import check_output
 from dbus.mainloop.glib import DBusGMainLoop
 from notify import notification
-
-def mute():
-    os.system('pactl set-sink-mute @DEFAULT_SINK@ 1')
-
-def unmute():
-    os.system('pactl set-sink-mute @DEFAULT_SINK@ 0')
-
-# Restore the system volume after exiting
-atexit.register(unmute)
 
 # Exit if Spotify is not running
 def exit_if_no_spotify():
@@ -28,6 +20,37 @@ def exit_if_no_spotify():
     sys.exit(0)
 
 exit_if_no_spotify()
+
+# Get the PulseAudio player ID of spotify
+from subprocess import check_output
+
+spotify_pid_list = str(check_output(['pidof', 'spotify'])).replace('\\n\'', '').replace('b\'', '').split(' ')
+sink_list = check_output(['pacmd', 'list-sink-inputs'])
+
+current_id = -1
+spotify_id = -1
+
+for line in sink_list.splitlines():
+    if line.startswith(b'    index:'):
+        current_id = str(line)[13:-1]
+
+    for pid in spotify_pid_list:
+        if line.startswith(b'\t\tapplication.process.id = "%b"' % pid.encode('utf8')):
+            spotify_id = current_id
+
+if spotify_id == -1:
+    print("Spotify isn't currently playing anything, exiting")
+    sys.exit(0)
+
+# Mute and unmute Apotify through the PulseAudio player ID
+def mute():
+    os.system(f'pacmd set-sink-input-mute "{spotify_id}" 1')
+
+def unmute():
+    os.system(f'pacmd set-sink-input-mute "{spotify_id}" 0')
+
+# Restore the volume after exiting
+atexit.register(unmute)
 
 # Connect to the Spotify DBus interface
 DBusGMainLoop(set_as_default = True)
@@ -42,7 +65,7 @@ def properties_changed(bus, message, args):
     title = metadata['xesam:title']
     artist = metadata['xesam:artist'][0]
 
-    if title == "Advertisement" and not artist:
+    if (title == "Advertisement" or title == "Spotify") and not artist:
         mute()
     else:
         unmute()
