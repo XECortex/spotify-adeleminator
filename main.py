@@ -8,7 +8,7 @@ import dbus
 import gi.repository.GLib
 from subprocess import check_output
 from dbus.mainloop.glib import DBusGMainLoop
-from notify import notification
+from subprocess import check_output
 
 # Exit if Spotify is not running
 def exit_if_no_spotify():
@@ -20,12 +20,13 @@ def exit_if_no_spotify():
     sys.exit(0)
 
 exit_if_no_spotify()
+print('Spotify found!')
 
 # Get the PulseAudio player ID of spotify
-from subprocess import check_output
-
 spotify_pid_list = str(check_output(['pidof', 'spotify'])).replace('\\n\'', '').replace('b\'', '').split(' ')
 sink_list = check_output(['pacmd', 'list-sink-inputs'])
+
+print('Spotify PIDs:', spotify_pid_list)
 
 current_id = -1
 spotify_id = -1
@@ -42,6 +43,8 @@ if spotify_id == -1:
     print("Spotify isn't currently playing anything, exiting")
     sys.exit(0)
 
+print('Spotify PulseAudio player ID:', spotify_id)
+
 # Mute and unmute Apotify through the PulseAudio player ID
 def mute():
     os.system(f'pacmd set-sink-input-mute "{spotify_id}" 1')
@@ -53,6 +56,7 @@ def unmute():
 atexit.register(unmute)
 
 # Connect to the Spotify DBus interface
+print('Connecting to DBus interface...')
 DBusGMainLoop(set_as_default = True)
 bus = dbus.SessionBus()
 spotify_bus = bus.get_object('org.mpris.MediaPlayer2.spotify', '/org/mpris/MediaPlayer2')
@@ -73,5 +77,6 @@ def properties_changed(bus, message, args):
 spotify_properties.connect_to_signal('PropertiesChanged', properties_changed)
 
 # Run the GLib event loop to process DBus signals as they arrive
+print('Everything done! Spotify AdEleminator is now running and listening for ads!')
 mainloop = gi.repository.GLib.MainLoop()
 mainloop.run()
