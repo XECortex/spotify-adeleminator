@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-VERSION = 0.1
+VERSION = 0.2
 
 import time
 import sys
@@ -13,6 +13,11 @@ import shutil
 from subprocess import check_output
 from dbus.mainloop.glib import DBusGMainLoop
 from subprocess import check_output
+
+
+
+def clear_line():
+    print(' ' * os.get_terminal_size().columns, end='\r')
 
 
 
@@ -61,7 +66,7 @@ if not get_pulse_id():
 
 pulse_id = get_pulse_id()
 
-print(' ' * os.get_terminal_size().columns, end='\r')
+clear_line()
 print('\33[92m●\33[0m Spotify detected')
 print('PulseAudio sink input ID:', pulse_id)
 
@@ -80,7 +85,6 @@ atexit.register(unmute)
 
 
 #* Connect to the Spotify DBus interface
-# TODO: Exit if DBus gets disconnected
 print('Connecting to DBus interface...')
 
 bus = dbus.SessionBus()
@@ -97,20 +101,27 @@ def song_changed(title, artist):
         unmute()
         is_ad = False
     
-    print(' ' * os.get_terminal_size().columns, end='\r')
+    clear_line()
     print('▶', title, '-\33[3m', artist, '\33[0m\33[1m\33[31mAdvertisement detected, muting Spotify\33[0m' if is_ad else '\33[0m', end='\r')
 
+
+
 #* Main loop
-# FIXME: Exit script without any errors when Spotify is closed
 print('\33[1mEverything done!\33[0m Spotify AdEleminator is now running and listening for ads!')
 print('')
 print('\33[1mPlaying:\33[0m')
 
 while True:
-    # Get the title and artist of the currently playing song to detect if the currently playing song is an ad
-    metadata = spotify_properties.Get('org.mpris.MediaPlayer2.Player', 'Metadata')
-    title = metadata['xesam:title'] if metadata['xesam:title'] else '<Unknown>'
-    artist = metadata['xesam:artist'][0] if metadata['xesam:artist'][0] else '<Unknown>'
+    try:
+        # Get the title and artist of the currently playing song to detect if it is an ad
+        metadata = spotify_properties.Get('org.mpris.MediaPlayer2.Player', 'Metadata')
+        title = metadata['xesam:title'] if metadata['xesam:title'] else '<Unknown>'
+        artist = metadata['xesam:artist'][0] if metadata['xesam:artist'][0] else '<Unknown>'
+    except dbus.exceptions.DBusException as exception:
+        clear_line()
+        print('\33[1m\33[31mSpotify closed\33[0m')
+
+        sys.exit(0)
 
     if title != last_title or artist != last_artist:
         song_changed(title, artist)
