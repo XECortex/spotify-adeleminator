@@ -61,6 +61,7 @@ if not get_pulse_id():
 
 pulse_id = get_pulse_id()
 
+print(' ' * os.get_terminal_size().columns, end='\r')
 print('\33[92m●\33[0m Spotify detected')
 print('PulseAudio sink input ID:', pulse_id)
 
