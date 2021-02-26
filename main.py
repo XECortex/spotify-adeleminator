@@ -14,17 +14,17 @@ from subprocess import check_output
 from dbus.mainloop.glib import DBusGMainLoop
 from subprocess import check_output
 
-
-
 def clear_line():
     print(' ' * os.get_terminal_size().columns, end='\r')
 
 
 
 #* Startup title and version check
+os.system('stty -echo')
+print('\033[?25l')
+
 up_version = float(requests.get('https://raw.githubusercontent.com/XECortex/spotify-adeleminator/main/version').text)
 
-print('')
 print('╭───────────────────────────╮')
 print(f'│ \33[1m\33[92mSpotify AdEleminator\33[0m v{VERSION} │')
 print('│ \33[3mby @XECortex\33[0m              │')
@@ -90,6 +90,9 @@ print('Connecting to DBus interface...')
 bus = dbus.SessionBus()
 spotify_properties = dbus.Interface(bus.get_object('org.mpris.MediaPlayer2.spotify', '/org/mpris/MediaPlayer2'), 'org.freedesktop.DBus.Properties')
 
+
+
+#* Main loop
 last_title = ""
 last_artist = ""
 
@@ -104,10 +107,7 @@ def song_changed(title, artist):
     clear_line()
     print('▶', title, '-\33[3m', artist, '\33[0m\33[1m\33[31mAdvertisement detected, muting Spotify\33[0m' if is_ad else '\33[0m', end='\r')
 
-
-
-#* Main loop
-print('\33[1mEverything done!\33[0m Spotify AdEleminator is now running and listening for ads!')
+print('\33[92m●\33[0m \33[1mEverything done!\33[0m\nSpotify AdEleminator is now running to protect you from all the nasty ads!')
 print('')
 print('\33[1mPlaying:\33[0m')
 
