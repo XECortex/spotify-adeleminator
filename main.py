@@ -1,25 +1,31 @@
-#!/usr/bin/env python
-
-VERSION = 0.3
+#!/usr/bin/env python3
 
 import time
 import sys
 import os
 import atexit
-import dbus
-import gi.repository.GLib
-import requests
 import shutil
+import psutil
+from pynput import keyboard
 from subprocess import check_output
-from dbus.mainloop.glib import DBusGMainLoop
-from subprocess import check_output
+import dbus
+import requests
 
-def clear_line():
+VERSION = 0.4
+
+def _clear_line():
     print(' ' * os.get_terminal_size().columns, end='\r')
+
+def _exit():
+    _clear_line()
+    print('\33[1m\33[31mSpotify closed\33[0m')
+    print('\033[?25h')
+    psutil.Process(os.getpid()).terminate()
 
 
 
 #* Startup title and version check
+os.system('echo -en "\033]0;Spotify AdEleminator\a"')
 os.system('stty -echo')
 print('\033[?25l')
 
@@ -35,6 +41,16 @@ if up_version > VERSION:
     print('\33[1m\33[91mA new version of this software is available on GitHub')
     print('Check out "\33[4mhttps://github.com/XECortex/spotify-adeleminator\33[0m\33[91m"\33[0m')
     print('')
+
+
+
+#* Close hotkey
+def key_release(key):
+    if key in [ keyboard.KeyCode(char='q'), keyboard.Key.esc ]:
+        _exit()
+
+listener = keyboard.Listener(on_release=key_release)
+listener.start()
 
 
 
@@ -66,7 +82,7 @@ if not get_pulse_id():
 
 pulse_id = get_pulse_id()
 
-clear_line()
+_clear_line()
 print('\33[92m●\33[0m Spotify detected')
 print('PulseAudio sink input ID:', pulse_id)
 
@@ -104,7 +120,7 @@ def song_changed(title, artist):
         unmute()
         is_ad = False
     
-    clear_line()
+    _clear_line()
     print('▶', title, '-\33[3m', artist, '\33[0m\33[1m\33[31mAdvertisement detected, muting Spotify\33[0m' if is_ad else '\33[0m', end='\r')
 
 print('\33[92m●\33[0m \33[1mEverything done!\33[0m\nSpotify AdEleminator is now running to protect you from all the nasty ads!')
@@ -118,10 +134,7 @@ while True:
         title = metadata['xesam:title'] if metadata['xesam:title'] else '<Unknown>'
         artist = metadata['xesam:artist'][0] if metadata['xesam:artist'][0] else '<Unknown>'
     except dbus.exceptions.DBusException as exception:
-        clear_line()
-        print('\33[1m\33[31mSpotify closed\33[0m')
-
-        sys.exit(0)
+        _exit()
 
     if title != last_title or artist != last_artist:
         song_changed(title, artist)
