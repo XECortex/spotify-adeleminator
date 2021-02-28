@@ -11,7 +11,7 @@ from subprocess import check_output
 import dbus
 import requests
 
-VERSION = 0.4
+VERSION = 0.5
 
 def _clear_line():
     print(' ' * os.get_terminal_size().columns, end='\r')
@@ -19,8 +19,27 @@ def _clear_line():
 def _exit():
     _clear_line()
     print('\33[1m\33[31mSpotify closed\33[0m')
+    time.sleep(1)
     print('\033[?25h')
     psutil.Process(os.getpid()).terminate()
+
+def _is_window_focused():
+    focused_id = int(check_output(['xdotool', 'getwindowfocus']).decode())
+    window_list = check_output(['wmctrl', '-lp']).splitlines()
+    pppid = check_output(['ps', '-p', str(os.getppid()), '-oppid=']).decode().strip()
+    
+    if pppid == '1':
+        pppid = str(os.getppid())
+
+    window_id = 0
+
+    for line in window_list:
+        line = line.decode()
+
+        if len(line.replace(pppid, ' ')) < len(line):
+            window_id = int(line[:10], 16)
+
+    return window_id == focused_id
 
 
 
@@ -46,7 +65,7 @@ if up_version > VERSION:
 
 #* Close hotkey
 def key_release(key):
-    if key in [ keyboard.KeyCode(char='q'), keyboard.Key.esc ]:
+    if key in [ keyboard.KeyCode(char='q'), keyboard.Key.esc ] and _is_window_focused():
         _exit()
 
 listener = keyboard.Listener(on_release=key_release)
@@ -63,7 +82,7 @@ def get_pulse_id():
 
     # Disassemble the chaos and extract the ID we need
     for line in sink_list:
-        line = str(line).replace("b'", '').replace("'", '')
+        line = str(line.decode())
         
         if line.startswith('    index:'):
             current_id = line[11:]
@@ -117,6 +136,7 @@ def song_changed(title, artist):
         mute()
         is_ad = True
     else:
+        time.sleep(1)
         unmute()
         is_ad = False
     
