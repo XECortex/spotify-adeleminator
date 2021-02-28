@@ -20,6 +20,7 @@ You can simply install updates by running `git pull` in the directory of Spotify
 ## Dependencies
 - Python
 - PulseAudio `pacmd`
+- `xdotool`
 - Spotify (who didn't expect that?)
 
 This script currently only works on Linux, but I will add Windows compatibility soon
