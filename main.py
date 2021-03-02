@@ -11,7 +11,7 @@ from subprocess import check_output
 import dbus
 import requests
 
-VERSION = 0.5
+VERSION = 0.6
 
 def _clear_line():
     print(' ' * os.get_terminal_size().columns, end='\r')
@@ -77,15 +77,15 @@ listener.start()
 def get_pulse_id():
     current_id = -1
     
-    # Get a list of all available sink inputs by using pacmd
-    sink_list = check_output(['pacmd', 'list-sink-inputs']).splitlines()
+    # Get a list of all available sink inputs by using pactl
+    sink_list = check_output(['pactl', 'list', 'sink-inputs']).splitlines()
 
     # Disassemble the chaos and extract the ID we need
     for line in sink_list:
         line = str(line.decode())
         
-        if line.startswith('    index:'):
-            current_id = line[11:]
+        if line.startswith('Sink Input #'):
+            current_id = line[12:]
         #? We could also search for Spotify's PID here (but it's less performant as we need another for loop)
         elif line.endswith('binary = "spotify"'):
             return current_id
@@ -109,10 +109,10 @@ print('PulseAudio sink input ID:', pulse_id)
 
 #* Mute and unmute Spotify functions
 def mute():
-    os.system(f'pacmd set-sink-input-mute "{pulse_id}" 1')
+    os.system(f'pactl set-sink-input-mute "{pulse_id}" 1')
 
 def unmute():
-    os.system(f'pacmd set-sink-input-mute "{pulse_id}" 0')
+    os.system(f'pactl set-sink-input-mute "{pulse_id}" 0')
 
 # Restore the volume after exiting
 atexit.register(unmute)

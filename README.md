@@ -1,4 +1,4 @@
-# Spotify AdEleminator - _v0.5_
+# Spotify AdEleminator - _v0.6_
 Enjoy listening to music. Without ads. Legally.
 
 ## How does it work?
@@ -19,7 +19,7 @@ You can simply install updates by running `git pull` in the directory of Spotify
 
 ## Dependencies
 - Python
-- PulseAudio `pacmd`
+- PulseAudio or PiperWire-Pulse (`pactl`)
 - `xdotool`
 - Spotify (who didn't expect that?)
 
