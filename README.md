@@ -1,4 +1,4 @@
-# Spotify AdEleminator - _v0.6_
+# Spotify AdEleminator - _v0.7_
 Enjoy listening to music. Without ads. Legally.
 
 ## How does it work?

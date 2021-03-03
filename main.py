@@ -3,6 +3,7 @@
 import time
 import sys
 import os
+import termios
 import atexit
 import shutil
 import psutil
@@ -11,7 +12,7 @@ from subprocess import check_output
 import dbus
 import requests
 
-VERSION = 0.6
+VERSION = 0.7
 
 def _clear_line():
     print(' ' * os.get_terminal_size().columns, end='\r')
@@ -19,8 +20,10 @@ def _clear_line():
 def _exit():
     _clear_line()
     print('\33[1m\33[31mSpotify closed\33[0m')
+
     time.sleep(1)
     print('\033[?25h')
+    termios.tcflush(sys.stdin, termios.TCIOFLUSH)
     psutil.Process(os.getpid()).terminate()
 
 def _is_window_focused():
@@ -44,6 +47,7 @@ def _is_window_focused():
 
 
 #* Startup title and version check
+os.system('clear')
 os.system('echo -en "\033]0;Spotify AdEleminator\a"')
 os.system('stty -echo')
 print('\033[?25l')
@@ -73,6 +77,27 @@ listener.start()
 
 
 
+#* # Launch spotify if it isn't running yet
+def spotify_running():
+    for p in psutil.process_iter(['name']):
+        if p.info['name'] == 'spotify':
+            return True
+    
+    return False
+
+if not spotify_running():
+    print('\33[33m●\33[0m Spotify is not running yet. Launching Spotify...', end='\r')
+    time.sleep(1)
+    os.system('spotify >/dev/null 2>&1 &')
+
+while not spotify_running():
+    time.sleep(1)
+
+_clear_line()
+print('\33[92m●\33[0m Spotify detected')
+
+
+ 
 #* Get the PulseAudio sink input ID of Spotify
 def get_pulse_id():
     current_id = -1
@@ -92,9 +117,10 @@ def get_pulse_id():
 
     return False
 
-# If Spotify isn't open yet, wait for for the user to start it
+
 if not get_pulse_id():
-    print('\33[33m●\33[0m Spotify is not running yet. Please open Spotify and play a song', end='\r')
+    _clear_line()
+    print('\33[33m●\33[0m Waiting for Spotify to start playing...', end='\r')
 
     while not get_pulse_id():
         time.sleep(1)
@@ -102,7 +128,6 @@ if not get_pulse_id():
 pulse_id = get_pulse_id()
 
 _clear_line()
-print('\33[92m●\33[0m Spotify detected')
 print('PulseAudio sink input ID:', pulse_id)
 
 
