@@ -27,4 +27,3 @@ This script currently only works on Linux, but I will add Windows compatibility 
 
 ## Screenshot
 ![Screenshot](https://raw.githubusercontent.com/XECortex/spotify-adeleminator/main/screenshot.jpg)
-![Animation](https://github.com/XECortex/spotify-adeleminator/blob/main/animation.gif?raw=true)
