@@ -1,9 +1,10 @@
-# Spotify AdEleminator - _v0.7_
-Enjoy listening to music. Without ads. Legally.
+# Spotify AdEleminator - _v0.8_
+Enjoy listening to music. Without ads. Legally.\
+You will still support the artist you listen to when using this program as it doesn't _block_ the ads but _mute_ them! They are still paid because they were played, but you just weren't listening to it (:
 
 ## How does it work?
 This script uses the DBus to communicate with Spotify.
-Whenever a new song is played, it checks the title of the song. If it reads “Advertisement“, the script will mute spotify via PulseAudio.
+Whenever a new song is played, it checks the title of the song. If it reads “Advertisement“, the script will mute Spotify via PulseAudio.
 
 ## How to use?
 ### Installation

@@ -12,7 +12,7 @@ from subprocess import check_output
 import dbus
 import requests
 
-VERSION = 0.7
+VERSION = 0.8
 
 def _clear_line():
     print(' ' * os.get_terminal_size().columns, end='\r')
@@ -157,7 +157,7 @@ last_title = ""
 last_artist = ""
 
 def song_changed(title, artist):
-    if title in ['Advertisement', 'Ad', 'Spotify', 'spotify'] and artist == '<Unknown>':
+    if (title == '<Unknown>' or title in ['Advertisement', 'Ad', 'Spotify', 'spotify']) and artist == '<Unknown>':
         mute()
         is_ad = True
     else:
@@ -168,7 +168,7 @@ def song_changed(title, artist):
     _clear_line()
     print('▶', title, '-\33[3m', artist, '\33[0m\33[1m\33[31mAdvertisement detected, muting Spotify\33[0m' if is_ad else '\33[0m', end='\r')
 
-print('\33[92m●\33[0m \33[1mEverything done!\33[0m\nSpotify AdEleminator is now running to protect you from all the nasty ads!')
+print('\33[92m●\33[0m \33[1mEverything done!\33[0m\nSpotify AdEleminator is now waiting for ads to mute!')
 print('')
 print('\33[1mPlaying:\33[0m')
 
