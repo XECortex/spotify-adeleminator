@@ -1,4 +1,4 @@
-# Spotify AdEleminator - _v0.8_
+# Spotify AdEleminator - _v0.9_
 Enjoy listening to music. Without ads. Legally.\
 You will still support the artist you listen to when using this program as it doesn't _block_ the ads but _mute_ them! They are still paid because they were played, but you just weren't listening to it (:
 
@@ -19,6 +19,10 @@ You can also just grab the main.py and run `python main.py` (or whatever you ren
 
 ### Updates
 You can simply install updates by running `git pull` in the directory of Spotify AdEleminator on your System.
+
+### Run in background
+Just add the `-d` flag when executing Spotify AdEleminator.
+If you want to always have this program always running in background, you can, for example, add `path/to/spotify-adeleminator/main.py -d` to your autostart.
 
 ## Dependencies
 - Python
