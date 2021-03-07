@@ -12,7 +12,7 @@ from subprocess import check_output
 import dbus
 import requests
 
-VERSION = 0.8
+VERSION = 1000.8
 
 def _clear_line():
     print(' ' * os.get_terminal_size().columns, end='\r')
