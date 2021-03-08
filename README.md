@@ -36,4 +36,5 @@ You can simply install updates by running `git pull` in the directory of Spotify
 - Spotify (who didn't expect that?)
 
 ## Screenshot
+![Screenshot](https://raw.githubusercontent.com/XECortex/spotify-adeleminator/main/terminal.png)
 ![Screenshot](https://raw.githubusercontent.com/XECortex/spotify-adeleminator/main/screenshot.png)

@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Spotify AdEleminator
+GenericName=Mute Ads
+Icon=spotify-client
+Terminal=true
+Categories=Audio;Music;Player;AudioVideo;
+Comment=Enjoy listening to music. Without ads. Legally.
+Exec=/home/cortex/Documents/spotify-adeleminator/main.py -a
