@@ -3,7 +3,7 @@
 Enjoy listening to music. Without ads. Legally.\
 You will still support the artist you listen to when using this program as it doesn't _block_ the ads but _mute_ them! They are still paid because they were played, but you just weren't listening to it (:
 
-Once a friend told me, “Thank you for that, finally I can listen to music in peace!“
+_Once a friend told me, “Thank you for that, finally I can listen to music in peace!“_
 
 **If something doesn't work properly, please open a issue so I can fix it, thank you!**
 
