@@ -1,188 +1,221 @@
 #!/usr/bin/env python3
 
-import time
-import sys
-import os
+VERSION = 1.0
+
 import termios
-import atexit
-import shutil
+import sys
+import traceback
 import psutil
-from pynput import keyboard
-from subprocess import check_output
-import dbus
+import argparse
 import requests
+import os
+import time
+import dbus
 
-VERSION = 1000.8
+from subprocess import check_output
 
-def _clear_line():
-    print(' ' * os.get_terminal_size().columns, end='\r')
 
-def _exit():
-    _clear_line()
-    print('\33[1m\33[31mSpotify closed\33[0m')
-
-    time.sleep(1)
+#* Functions
+#? Restore terminal settings
+def exit_cleanup(noclear=False, noexit=False, delay=False):
+    if delay:
+        time.sleep(1)
+    
+    os.system('stty echo')
     print('\033[?25h')
     termios.tcflush(sys.stdin, termios.TCIOFLUSH)
-    psutil.Process(os.getpid()).terminate()
 
-def _is_window_focused():
-    focused_id = int(check_output(['xdotool', 'getwindowfocus']).decode())
-    window_list = check_output(['wmctrl', '-lp']).splitlines()
-    pppid = check_output(['ps', '-p', str(os.getppid()), '-oppid=']).decode().strip()
+    if not noclear:
+        os.system('clear')
     
-    if pppid == '1':
-        pppid = str(os.getppid())
-
-    window_id = 0
-
-    for line in window_list:
-        line = line.decode()
-
-        if len(line.replace(pppid, ' ')) < len(line):
-            window_id = int(line[:10], 16)
-
-    return window_id == focused_id
+    if not noexit:
+        exit()
 
 
-
-#* Startup title and version check
-os.system('clear')
-os.system('echo -en "\033]0;Spotify AdEleminator\a"')
-os.system('stty -echo')
-print('\033[?25l')
-
-up_version = float(requests.get('https://raw.githubusercontent.com/XECortex/spotify-adeleminator/main/version').text)
-
-print('╭───────────────────────────╮')
-print(f'│ \33[1m\33[92mSpotify AdEleminator\33[0m v{VERSION} │')
-print('│ \33[3mby @XECortex\33[0m              │')
-print('╰───────────────────────────╯')
-print('')
-
-if up_version > VERSION:
-    print('\33[1m\33[91mA new version of this software is available on GitHub')
-    print('Check out "\33[4mhttps://github.com/XECortex/spotify-adeleminator\33[0m\33[91m"\33[0m')
-    print('')
+#? Clear a previously with end='\r' printed line
+def clear_line(newline=False, char=' '):
+    print(char * os.get_terminal_size().columns, end='\r' if not newline else '\n')
 
 
+#? Exception handler
+def handle_exception(exception):
+    exit_cleanup(noexit=True)
 
-#* Close hotkey
-def key_release(key):
-    if key in [ keyboard.KeyCode(char='q'), keyboard.Key.esc ] and _is_window_focused():
-        _exit()
+    print(f'\33[91m●\33[0m \33[1m\33[91mAn error occured:\33[0m {type(exception).__name__}')
+    print_traceback = input('  Do you want to print the error message? [\33[1my\33[0mes/\33[1mn\33[0mo/with \33[1mt\33[0mraceback]: ')
 
-listener = keyboard.Listener(on_release=key_release)
-listener.start()
+    if print_traceback == 'y':
+        print()
+        print('>', exception)
+    elif print_traceback == 't':
+        clear_line(True, '~')
+        print(traceback.print_exc())
+    elif print_traceback != 'n':
+        print('Invalid option')
+
+    exit_cleanup(noclear=True)
 
 
-
-#* # Launch spotify if it isn't running yet
+#? Check if Spotify is opened
 def spotify_running():
+    # Iterate over every running application
     for p in psutil.process_iter(['name']):
+        # Check if it is a Spotify instance
         if p.info['name'] == 'spotify':
             return True
     
     return False
 
-if not spotify_running():
-    print('\33[33m●\33[0m Spotify is not running yet. Launching Spotify...', end='\r')
-    time.sleep(1)
-    os.system('spotify >/dev/null 2>&1 &')
 
-while not spotify_running():
-    time.sleep(1)
-
-_clear_line()
-print('\33[92m●\33[0m Spotify detected')
-
-
- 
-#* Get the PulseAudio sink input ID of Spotify
-def get_pulse_id():
+#? Get the Pulse client ID of Spotify
+def get_client_id():
     current_id = -1
-    
-    # Get a list of all available sink inputs by using pactl
+
+    # Lists all sink-inputs
     sink_list = check_output(['pactl', 'list', 'sink-inputs']).splitlines()
 
-    # Disassemble the chaos and extract the ID we need
+    # Disassemble the chaos and extract what we need
     for line in sink_list:
         line = str(line.decode())
         
         if line.startswith('Sink Input #'):
             current_id = line[12:]
-        #? We could also search for Spotify's PID here (but it's less performant as we need another for loop)
         elif line.endswith('binary = "spotify"'):
             return current_id
 
     return False
 
 
-if not get_pulse_id():
-    _clear_line()
-    print('\33[33m●\33[0m Waiting for Spotify to start playing...', end='\r')
+def mute(s, client_id):
+    os.system(f'pactl set-sink-input-mute "{client_id}" {1 if s else 0}')
 
-    while not get_pulse_id():
+
+def song_changed(title, artist, client_id):
+    # Ad detection
+    is_ad = (title == '<Unknown>' or title in ['Advertisement', 'Ad', 'Spotify', 'spotify']) and artist == '<Unknown>'
+
+    # Wait a second after the ad ends as Spotify buffers audio that will play for a few more milliseconds
+    if is_ad:
         time.sleep(1)
 
-pulse_id = get_pulse_id()
-
-_clear_line()
-print('PulseAudio sink input ID:', pulse_id)
-
-
-
-#* Mute and unmute Spotify functions
-def mute():
-    os.system(f'pactl set-sink-input-mute "{pulse_id}" 1')
-
-def unmute():
-    os.system(f'pactl set-sink-input-mute "{pulse_id}" 0')
-
-# Restore the volume after exiting
-atexit.register(unmute)
-
-
-
-#* Connect to the Spotify DBus interface
-print('Connecting to DBus interface...')
-
-bus = dbus.SessionBus()
-spotify_properties = dbus.Interface(bus.get_object('org.mpris.MediaPlayer2.spotify', '/org/mpris/MediaPlayer2'), 'org.freedesktop.DBus.Properties')
-
-
-
-#* Main loop
-last_title = ""
-last_artist = ""
-
-def song_changed(title, artist):
-    if (title == '<Unknown>' or title in ['Advertisement', 'Ad', 'Spotify', 'spotify']) and artist == '<Unknown>':
-        mute()
-        is_ad = True
-    else:
-        time.sleep(1)
-        unmute()
-        is_ad = False
+    # Mute the spotify application if an ad is playing
+    mute(is_ad, client_id)
     
-    _clear_line()
-    print('▶', title, '-\33[3m', artist, '\33[0m\33[1m\33[31mAdvertisement detected, muting Spotify\33[0m' if is_ad else '\33[0m', end='\r')
+    return f'▶ {title} - \33[3m{artist}' + (' \33[0m\33[1m\33[31mAdvertisement detected, muting Spotify\33[0m' if is_ad else '\33[0m')
 
-print('\33[92m●\33[0m \33[1mEverything done!\33[0m\nSpotify AdEleminator is now waiting for ads to mute!')
-print('')
-print('\33[1mPlaying:\33[0m')
 
-while True:
-    try:
-        # Get the title and artist of the currently playing song to detect if it is an ad
-        metadata = spotify_properties.Get('org.mpris.MediaPlayer2.Player', 'Metadata')
-        title = metadata['xesam:title'] if metadata['xesam:title'] else '<Unknown>'
-        artist = metadata['xesam:artist'][0] if metadata['xesam:artist'][0] else '<Unknown>'
-    except dbus.exceptions.DBusException as exception:
-        _exit()
+#* Init
+# Argument parser
+parser = argparse.ArgumentParser()
 
-    if title != last_title or artist != last_artist:
-        song_changed(title, artist)
+parser.add_argument('-a', '--autolaunch', action='store_true', help='launch Spotify on program start')
+parser.add_argument('-l', '--loop', action='store_true', help='do not close with Spotify but wait for a new instance')
 
-    last_title = title
-    last_artist = artist
+args = parser.parse_args()
+autolaunch = args.autolaunch
+loop = args.loop
+
+
+#* Wrapper loop
+first_run = True
+
+try:
+    while first_run or loop:
+        # Set up terminal
+        os.system('clear')
+        os.system('echo -en "\033]0;Spotify AdEleminator\a"')
+
+        # Disable user input and hide the cursor
+        os.system('stty -echo')
+        print('\033[?25l')
+
+        # Startup title
+        print('╭───────────────────────────╮')
+        print(f'│ \33[1m\33[92mSpotify AdEleminator\33[0m v{VERSION} │')
+        print('│ \33[3mby @XECortex\33[0m              │')
+        print('╰───────────────────────────╯')
+        print('')
+
+        # Update checker
+        # The latest version is stored on GitHub as a float number
+        up_version = float(requests.get('https://raw.githubusercontent.com/XECortex/spotify-adeleminator/main/version').text[3:])
+
+        # If the version on GitHub is newer than the installed, notify the user
+        if up_version > VERSION:
+            if first_run:
+                os.system('notify-send "Spotify AdEleminator" "A new update is available on GitHub\nCheck out <tt>https://github.com/XECortex/spotify-adeleminator</tt>" -i spotify')
+
+            print('\33[1m\33[91m●\33[0m A new update is available on GitHub!')
+            print('  Check out \33[4mhttps://github.com/XECortex/spotify-adeleminator\33[0m')
+            print('')
+
+        # Detect Spotify
+        if not spotify_running():
+            # If Spotify isn't running yet and the user enabled autolaunch, launch Spotify
+            if autolaunch and first_run:
+                print('\33[33m○\33[0m Launching Spotify...', end='\r')
+                os.system('spotify >/dev/null 2>&1 &')
+            else:
+                print('\33[33m○\33[0m Waiting for Spotify process...', end='\r')
+
+            # Wait until Spotify is running
+            while not spotify_running():
+                time.sleep(1)
+
+        # Get the client ID
+        if not get_client_id():
+            clear_line()
+            print('\33[33m○\33[0m Waiting for Spotify to start playing...', end='\r')
+
+            while not get_client_id():
+                time.sleep(1)
+
+        client_id = get_client_id()
+
+        clear_line()
+        print(f'\33[92m●\33[0m Spotify detected\n  \33[90mPulse client ID: {client_id}\33[0m\n  \33[90mConnecting to DBus...\33[0m')
+
+        # Connect to the DBus interface and get access to the properties of Spotify using mpris
+        bus = dbus.SessionBus()
+        spotify_properties = dbus.Interface(bus.get_object('org.mpris.MediaPlayer2.spotify', '/org/mpris/MediaPlayer2'), 'org.freedesktop.DBus.Properties')
+
+
+        #* Main loop
+        last_title = ''
+        last_artist = ''
+
+        print('\33[92m●\33[0m Spotify AdEleminator is now ready')
+        print('')
+        print('  \33[1mPlaying:\33[0m')
+        print('No data available', end='\r')
+
+        while True:
+            # Get information about the currently playing song from Spotify's DBus properties
+            try:
+                metadata = spotify_properties.Get('org.mpris.MediaPlayer2.Player', 'Metadata')
+                title = metadata['xesam:title'] if metadata['xesam:title'] else '<Unknown>'
+                artist = metadata['xesam:artist'][0] if metadata['xesam:artist'][0] else '<Unknown>'
+            except:
+                break
+
+            # Compare the old and new song information to check if the song has changed
+            if title != last_title or artist != last_artist:
+                clear_line()
+                print(song_changed(title, artist, client_id), end='\r')
+
+            last_title = title
+            last_artist = artist
+
+        first_run = False
+
+        clear_line()
+        print('\33[91m●\33[0m Spotify closed')
+
+        if not loop:
+            break
+except KeyboardInterrupt:
+    False
+except Exception as e:
+    handle_exception(e)
+
+exit_cleanup(delay=True)
