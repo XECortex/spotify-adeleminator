@@ -1,4 +1,4 @@
-# Spotify AdEleminator - _v1.0_
+# Spotify AdEleminator - _v1.1_
 
 Enjoy listening to music. Without ads. Legally.\
 You will still support the artist you listen to when using this program as it doesn't _block_ the ads but _mute_ them! They are still paid because they were played, but you just weren't listening to it (:

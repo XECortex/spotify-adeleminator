@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-VERSION = 1.0
+VERSION = 1.1
 
 import termios
 import sys
@@ -17,10 +17,7 @@ from subprocess import check_output
 
 #* Functions
 #? Restore terminal settings
-def exit_cleanup(noclear=False, noexit=False, delay=False):
-    if delay:
-        time.sleep(1)
-    
+def exit_cleanup(noclear=False, noexit=False):
     os.system('stty echo')
     print('\033[?25h')
     termios.tcflush(sys.stdin, termios.TCIOFLUSH)
@@ -87,7 +84,14 @@ def get_client_id():
 
 
 def mute(s, client_id):
-    os.system(f'pactl set-sink-input-mute "{client_id}" {1 if s else 0}')
+    os.system(f'pactl set-sink-input-mute "{client_id}" {str(1 if s else 0)}')
+
+
+def truncate(s, length):
+    if len(s) == length or len(s) < length:
+        return s
+    
+    return s[:int(length - 1)] + '…'
 
 
 def song_changed(title, artist, client_id):
@@ -101,7 +105,7 @@ def song_changed(title, artist, client_id):
     # Mute the spotify application if an ad is playing
     mute(is_ad, client_id)
     
-    return f'▶ {title} - \33[3m{artist}' + (' \33[0m\33[1m\33[31mAdvertisement detected, muting Spotify\33[0m' if is_ad else '\33[0m')
+    return truncate(f'▶ {title} - \33[3m{artist}\33[0m' if not is_ad else '▶ \33[91mAdvertisement\33[0m', os.get_terminal_size().columns + 2) # Add 2 for the color escape characters
 
 
 #* Init
@@ -155,12 +159,10 @@ try:
             if autolaunch and first_run:
                 print('\33[33m○\33[0m Launching Spotify...', end='\r')
                 os.system('spotify >/dev/null 2>&1 &')
-            else:
-                print('\33[33m○\33[0m Waiting for Spotify process...', end='\r')
 
-            # Wait until Spotify is running
-            while not spotify_running():
-                time.sleep(1)
+                # Wait until Spotify is running
+                while not spotify_running():
+                    time.sleep(1)
 
         # Get the client ID
         if not get_client_id():
@@ -183,6 +185,7 @@ try:
         #* Main loop
         last_title = ''
         last_artist = ''
+        termsize = 0
 
         print('\33[92m●\33[0m Spotify AdEleminator is now ready')
         print('')
@@ -199,7 +202,9 @@ try:
                 break
 
             # Compare the old and new song information to check if the song has changed
-            if title != last_title or artist != last_artist:
+            if title != last_title or artist != last_artist or os.get_terminal_size().columns != termsize:
+                termsize = os.get_terminal_size().columns
+
                 clear_line()
                 print(song_changed(title, artist, client_id), end='\r')
 
@@ -218,4 +223,5 @@ except KeyboardInterrupt:
 except Exception as e:
     handle_exception(e)
 
-exit_cleanup(delay=True)
+time.sleep(1)
+exit_cleanup()
