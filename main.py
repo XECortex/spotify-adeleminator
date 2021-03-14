@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 
-VERSION = 1.1
+VERSION = 1.2
 
+import os
 import termios
 import sys
 import traceback
 import psutil
+import threading
 import argparse
 import requests
-import os
 import time
 import dbus
 
@@ -29,9 +30,14 @@ def exit_cleanup(noclear=False, noexit=False):
         exit()
 
 
+#? Get the width and height of the terminal
+def get_termsize():
+    return int(check_output(['stty', 'size']).split()[1])
+
+
 #? Clear a previously with end='\r' printed line
 def clear_line(newline=False, char=' '):
-    print(char * os.get_terminal_size().columns, end='\r' if not newline else '\n')
+    print(char * get_termsize(), end='\r' if not newline else '\n')
 
 
 #? Exception handler
@@ -83,12 +89,16 @@ def get_client_id():
     return False
 
 
-def mute(s, client_id):
-    os.system(f'pactl set-sink-input-mute "{client_id}" {str(1 if s else 0)}')
+def mute(is_ad, client_id):
+    # Wait a second after the ad ends as Spotify buffers audio that will play for a few more milliseconds
+    if not is_ad:
+        time.sleep(1)
+    
+    os.system(f'pactl set-sink-input-mute "{client_id}" {str(1 if is_ad else 0)}')
 
 
 def truncate(s, length):
-    if len(s) == length or len(s) < length:
+    if len(s) <= length:
         return s
     
     return s[:int(length - 1)] + '…'
@@ -98,14 +108,10 @@ def song_changed(title, artist, client_id):
     # Ad detection
     is_ad = (title == '<Unknown>' or title in ['Advertisement', 'Ad', 'Spotify', 'spotify']) and artist == '<Unknown>'
 
-    # Wait a second after the ad ends as Spotify buffers audio that will play for a few more milliseconds
-    if is_ad:
-        time.sleep(1)
-
     # Mute the spotify application if an ad is playing
-    mute(is_ad, client_id)
+    threading.Thread(target=mute, args=(is_ad, client_id)).start()
     
-    return truncate(f'▶ {title} - \33[3m{artist}\33[0m' if not is_ad else '▶ \33[91mAdvertisement\33[0m', os.get_terminal_size().columns + 2) # Add 2 for the color escape characters
+    return truncate(f'▶ {title} - \33[3m{artist}\33[0m' if not is_ad else '▶ \33[91mAdvertisement\33[0m', get_termsize())
 
 
 #* Init
@@ -158,7 +164,7 @@ try:
             # If Spotify isn't running yet and the user enabled autolaunch, launch Spotify
             if autolaunch and first_run:
                 print('\33[33m○\33[0m Launching Spotify...', end='\r')
-                os.system('spotify >/dev/null 2>&1 &')
+                os.system('spotify >/dev/null 2>&1 &') # Disable debug and error output and disown the process
 
                 # Wait until Spotify is running
                 while not spotify_running():
@@ -198,12 +204,13 @@ try:
                 metadata = spotify_properties.Get('org.mpris.MediaPlayer2.Player', 'Metadata')
                 title = metadata['xesam:title'] if metadata['xesam:title'] else '<Unknown>'
                 artist = metadata['xesam:artist'][0] if metadata['xesam:artist'][0] else '<Unknown>'
+                # print(metadata['mpris:artUrl'].replace('open.spotify.com', 'i.scdn.co'))
             except:
                 break
 
             # Compare the old and new song information to check if the song has changed
-            if title != last_title or artist != last_artist or os.get_terminal_size().columns != termsize:
-                termsize = os.get_terminal_size().columns
+            if title != last_title or artist != last_artist or get_termsize() != termsize:
+                termsize = get_termsize()
 
                 clear_line()
                 print(song_changed(title, artist, client_id), end='\r')
